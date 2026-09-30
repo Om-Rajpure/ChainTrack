@@ -8,17 +8,21 @@ let isRunning = true;
 
 async function startIndexerDaemon() {
   const deployment = getDeploymentMetadata();
+  const chainId = process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID, 10) : (deployment?.chainId ?? "Unknown");
+  const contractAddress = process.env.CONTRACT_ADDRESS || deployment?.address;
+  const deployBlock = process.env.INDEXER_START_BLOCK ? parseInt(process.env.INDEXER_START_BLOCK, 10) : (deployment?.deployBlock ?? 0);
+
   console.log("==================================================");
   console.log("ChainTrack — Standalone Event Indexer Daemon");
   console.log("==================================================");
-  console.log(`Network Chain ID : ${deployment?.chainId ?? "Unknown"}`);
-  console.log(`Contract Address : ${deployment?.address ?? "Not found"}`);
-  console.log(`Deploy Block     : ${deployment?.deployBlock ?? 0}`);
+  console.log(`Network Chain ID : ${chainId}`);
+  console.log(`Contract Address : ${contractAddress ?? "Not found"}`);
+  console.log(`Deploy Block     : ${deployBlock}`);
   console.log(`Polling Interval : ${POLL_INTERVAL_MS} ms`);
   console.log("==================================================");
 
-  if (!deployment?.address) {
-    console.error("Error: Contract deployment metadata missing. Please deploy contract first.");
+  if (!contractAddress) {
+    console.error("Error: Contract address missing. Please set CONTRACT_ADDRESS or deploy contract first.");
     process.exit(1);
   }
 

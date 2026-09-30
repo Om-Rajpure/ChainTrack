@@ -5,7 +5,7 @@
   "description": "Web frontend and backend API for ChainTrack",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "npx tsx --test test/hash.test.ts test/validation.test.ts test/auth-nonce.test.ts test/api-services.test.ts test/indexer.test.ts test/integration-hardening.test.ts",
