@@ -11,8 +11,9 @@ import {
   createParticipantProfileSchema,
   patchParticipantProfileSchema,
 } from "../src/lib/validation";
+import { parseContractError } from "../src/lib/errors";
 
-test("Phase 7: Integration, Hardening & Security Test Suite", async (t) => {
+test("Phase 7 & QA: Integration, Hardening & Verification Test Suite", async (t) => {
   // 1. SIWE Authentication & Session Hardening
   await t.test("Auth 1: High-entropy nonce generation and 5-min TTL expiry", () => {
     const nonce1 = generateNonce();
@@ -145,6 +146,68 @@ test("Phase 7: Integration, Hardening & Security Test Suite", async (t) => {
     assert.notEqual(authenticHash, tamperedAttr, "Changed attribute must produce mismatched hash");
   });
 
+  await t.test("Verification 2: Status classification engine distinguishes AUTHENTIC vs DATA_MISMATCH vs NOT_FOUND", () => {
+    const verifyProductMock = (chainData: any | null, dbData: any | null) => {
+      if (!chainData) {
+        return { status: "NOT_FOUND", authentic: false };
+      }
+      if (!dbData) {
+        return { status: "AUTHENTIC", authentic: true, detailsAvailable: false };
+      }
+      const computedHash = computeProductHash({
+        serialNumber: dbData.serialNumber,
+        name: dbData.name,
+        category: dbData.category,
+        description: dbData.description || undefined,
+        batchNumber: dbData.batchNumber,
+        manufacturingDate: dbData.manufacturingDate,
+        manufacturerWallet: dbData.manufacturerAddress,
+        attributes: dbData.attributes || undefined,
+        imageHash: dbData.imageHash || undefined,
+      });
+
+      const isMatch = computedHash.toLowerCase() === chainData.dataHash.toLowerCase();
+      return {
+        status: isMatch ? "AUTHENTIC" : "DATA_MISMATCH",
+        authentic: isMatch,
+        computedHash,
+      };
+    };
+
+    const validMeta = {
+      serialNumber: "SN-100",
+      name: "Aspirin",
+      category: "Pharma",
+      batchNumber: "B-1",
+      manufacturingDate: "2026-09-30",
+      manufacturerAddress: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+    };
+    const correctHash = computeProductHash({
+      serialNumber: validMeta.serialNumber,
+      name: validMeta.name,
+      category: validMeta.category,
+      batchNumber: validMeta.batchNumber,
+      manufacturingDate: validMeta.manufacturingDate,
+      manufacturerWallet: validMeta.manufacturerAddress,
+    });
+
+    // 1. Authentic case
+    const authenticRes = verifyProductMock({ dataHash: correctHash }, validMeta);
+    assert.equal(authenticRes.status, "AUTHENTIC");
+    assert.equal(authenticRes.authentic, true);
+
+    // 2. Data mismatch case (Tampering)
+    const tamperedMeta = { ...validMeta, name: "Counterfeit Aspirin" };
+    const mismatchRes = verifyProductMock({ dataHash: correctHash }, tamperedMeta);
+    assert.equal(mismatchRes.status, "DATA_MISMATCH");
+    assert.equal(mismatchRes.authentic, false);
+
+    // 3. Not Found case
+    const notFoundRes = verifyProductMock(null, null);
+    assert.equal(notFoundRes.status, "NOT_FOUND");
+    assert.equal(notFoundRes.authentic, false);
+  });
+
   // 3. Indexer Idempotency & Cursor Simulation
   await t.test("Indexer 1: Event deduplication key ensures strict idempotency", () => {
     const eventsStore = new Map<string, any>();
@@ -193,7 +256,7 @@ test("Phase 7: Integration, Hardening & Security Test Suite", async (t) => {
     assert.ok(nextFrom > targetBlock, "Cursor correctly recognizes it is fully up to date");
   });
 
-  // 4. API Input Validation & Security Bounds
+  // 4. API Input Validation & Error Decoding
   await t.test("Validation 1: Reject malicious or malformed inputs", () => {
     // 1. Invalid Ethereum Address
     assert.throws(() => {
@@ -224,5 +287,17 @@ test("Phase 7: Integration, Hardening & Security Test Suite", async (t) => {
         role: "INVALID_ROLE",
       });
     });
+  });
+
+  await t.test("Errors 1: parseContractError translates custom Solidity errors accurately", () => {
+    assert.match(parseContractError({ message: "execution reverted: custom error NotAdmin()" }), /contract administrator/i);
+    assert.match(parseContractError({ message: "execution reverted: custom error NotParticipant()" }), /not registered as a participant/i);
+    assert.match(parseContractError({ message: "execution reverted: custom error ParticipantInactive()" }), /deactivated/i);
+    assert.match(parseContractError({ message: "execution reverted: custom error WrongRole()" }), /role does not have permission/i);
+    assert.match(parseContractError({ message: "execution reverted: custom error NotOwner()" }), /current product custodian/i);
+    assert.match(parseContractError({ message: "execution reverted: custom error NotPendingReceiver()" }), /designated pending receiver/i);
+    assert.match(parseContractError({ message: "execution reverted: custom error InvalidStatus()" }), /required status/i);
+    assert.match(parseContractError({ message: "execution reverted: custom error StringTooLong()" }), /100 bytes or note.*280 bytes/i);
+    assert.match(parseContractError({ message: "execution reverted: custom error DuplicateHash()" }), /already been registered/i);
   });
 });
