@@ -1,0 +1,116 @@
+// Prisma Schema for ChainTrack — Blockchain Supply Chain Tracker
+// Off-chain data store for metadata, product drafts, search indexes, participant profiles, and nonces.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MANUFACTURER
+  DISTRIBUTOR
+  RETAILER
+}
+
+enum ProductStatus {
+  CREATED
+  IN_TRANSIT
+  AT_DISTRIBUTOR
+  AT_RETAILER
+  SOLD
+}
+
+enum EventType {
+  REGISTERED
+  TRANSFER_INITIATED
+  TRANSFER_ACCEPTED
+  TRANSFER_REJECTED
+  LOCATION_UPDATE
+  SOLD
+}
+
+model Participant {
+  id               String   @id @default(cuid())
+  walletAddress    String   @unique // stored lowercase
+  role             Role
+  isActive         Boolean  @default(true)
+  organizationName String? // filled when profile is saved
+  contactEmail     String?
+  location         String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([role])
+}
+
+model Product {
+  id                  String         @id @default(cuid()) // used as draftId
+  chainProductId      Int?           @unique // null until linked to chain
+  serialNumber        String         @unique // generated at draft time
+  dataHash            String         @unique // 0x + 64 hex chars
+  name                String
+  category            String
+  description         String?
+  batchNumber         String
+  manufacturingDate   DateTime       @db.Date
+  attributes          Json           @default("{}")
+  imageUrl            String?
+  imageHash           String?
+  manufacturerAddress String // lowercase
+  currentOwner        String? // lowercase, mirrors chain
+  pendingReceiver     String? // lowercase, mirrors chain
+  currentStatus       ProductStatus? // null while draft
+  isConfirmed         Boolean        @default(false)
+  registrationTxHash  String?
+  draftExpiresAt      DateTime? // set for unconfirmed drafts
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@index([manufacturerAddress])
+  @@index([currentOwner])
+  @@index([pendingReceiver])
+  @@index([currentStatus])
+  @@index([category])
+  @@index([isConfirmed, draftExpiresAt])
+}
+
+model ProductEvent {
+  id             String    @id @default(cuid())
+  chainProductId Int
+  eventType      EventType
+  actor          String // lowercase wallet
+  counterparty   String? // lowercase wallet
+  location       String?
+  note           String?
+  blockNumber    Int
+  blockTimestamp DateTime
+  txHash         String
+  logIndex       Int
+  createdAt      DateTime  @default(now())
+
+  @@unique([txHash, logIndex])
+  @@index([chainProductId, blockNumber, logIndex])
+  @@index([actor])
+}
+
+model AuthNonce {
+  id        String    @id @default(cuid())
+  address   String // lowercase
+  nonce     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([address])
+  @@index([expiresAt])
+}
+
+model IndexerState {
+  id                 String   @id // always "main"
+  lastProcessedBlock Int
+  updatedAt          DateTime @updatedAt
+}

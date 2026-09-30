@@ -1,0 +1,31 @@
+{
+  "name": "chaintrack",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ChainTrack — Blockchain Supply Chain Tracker",
+  "workspaces": [
+    "contracts",
+    "web"
+  ],
+  "scripts": {
+    "chain": "npm --prefix contracts run chain",
+    "deploy:local": "npm --prefix contracts run deploy:local",
+    "deploy:sepolia": "npm --prefix contracts run deploy:sepolia",
+    "seed": "npm --prefix contracts run seed",
+    "indexer": "npm --prefix web run indexer",
+    "dev": "npm --prefix web run dev",
+    "test": "npm --prefix contracts test && npm --prefix web test"
+  },
+  "keywords": [
+    "blockchain",
+    "supply-chain",
+    "solidity",
+    "hardhat",
+    "nextjs",
+    "postgresql",
+    "prisma",
+    "ethers"
+  ],
+  "author": "",
+  "license": "UNLICENSED"
+}
