@@ -199,8 +199,14 @@ export default function ProductDetailPage() {
     );
   }
 
-  const chainStatus = productData.chain?.status;
-  const currentOwner = productData.chain?.currentOwner?.toLowerCase();
+  const chainStatus =
+    productData.chain?.statusName ||
+    (typeof productData.chain?.status === "number"
+      ? ["CREATED", "IN_TRANSIT", "AT_DISTRIBUTOR", "AT_RETAILER", "SOLD"][productData.chain.status]
+      : productData.chain?.status) ||
+    productData.db?.currentStatus ||
+    "CREATED";
+  const currentOwner = productData.chain?.currentOwner?.toLowerCase() || productData.db?.currentOwner?.toLowerCase();
   const isCurrentOwner = account && currentOwner && account.toLowerCase() === currentOwner;
 
   // Lifecycle permissions

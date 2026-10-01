@@ -48,8 +48,24 @@ const statusConfig: Record<string, { label: string; bg: string; text: string; bo
   },
 };
 
-export function StatusBadge({ status, size = "md" }: { status: ProductStatus; size?: "sm" | "md" | "lg" }) {
-  const normStatus = (status || "").toUpperCase();
+export function StatusBadge({ status, size = "md" }: { status: ProductStatus | number | any; size?: "sm" | "md" | "lg" }) {
+  let statusStr = "";
+  if (typeof status === "number") {
+    const numMap: Record<number, string> = {
+      0: "CREATED",
+      1: "IN_TRANSIT",
+      2: "AT_DISTRIBUTOR",
+      3: "AT_RETAILER",
+      4: "SOLD",
+    };
+    statusStr = numMap[status] || String(status);
+  } else if (typeof status === "string") {
+    statusStr = status;
+  } else if (status != null) {
+    statusStr = String(status);
+  }
+
+  const normStatus = statusStr.toUpperCase();
   const config = statusConfig[normStatus] || {
     label: normStatus || "Unknown",
     bg: "bg-slate-800",
