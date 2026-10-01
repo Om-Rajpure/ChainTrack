@@ -14,8 +14,9 @@ import {
 } from "lucide-react";
 
 export interface TimelineEvent {
-  eventType: string;
-  timestamp: string | Date;
+  eventType: string | number;
+  eventTypeName?: string;
+  timestamp: string | Date | number;
   actor: string;
   counterparty?: string | null;
   location?: string | null;
@@ -23,50 +24,76 @@ export interface TimelineEvent {
   txHash?: string | null;
 }
 
+const EVENT_TYPE_MAP: Record<number, string> = {
+  0: "REGISTERED",
+  1: "TRANSFER_INITIATED",
+  2: "TRANSFER_ACCEPTED",
+  3: "TRANSFER_REJECTED",
+  4: "LOCATION_UPDATE",
+  5: "SOLD",
+};
+
 const eventStyles: Record<string, { title: string; icon: any; color: string; border: string; bg: string }> = {
   REGISTERED: {
-    title: "Product Registered",
+    title: "Product Created & Registered",
     icon: PackagePlus,
     color: "text-blue-400",
     border: "border-blue-500/30",
     bg: "bg-blue-950/30",
   },
   TRANSFER_INITIATED: {
-    title: "Transfer Dispatched / In Transit",
+    title: "Transfer Dispatched (In Transit)",
     icon: Truck,
     color: "text-amber-400",
     border: "border-amber-500/30",
     bg: "bg-amber-950/30",
   },
   TRANSFER_ACCEPTED: {
-    title: "Custody Accepted & Received",
+    title: "Custody Accepted",
     icon: CheckCircle2,
     color: "text-emerald-400",
     border: "border-emerald-500/30",
     bg: "bg-emerald-950/30",
   },
   TRANSFER_REJECTED: {
-    title: "Transfer Rejected & Returned",
+    title: "Transfer Rejected & Custody Returned",
     icon: XCircle,
     color: "text-rose-400",
     border: "border-rose-500/30",
     bg: "bg-rose-950/30",
   },
   LOCATION_UPDATE: {
-    title: "Checkpoint / Location Update",
+    title: "Checkpoint / Location Inspection",
     icon: MapPin,
     color: "text-cyan-400",
     border: "border-cyan-500/30",
     bg: "bg-cyan-950/30",
   },
   SOLD: {
-    title: "Product Sold to Consumer",
+    title: "Product Sold (Final Custody)",
     icon: BadgeDollarSign,
     color: "text-emerald-400",
     border: "border-emerald-500/30",
     bg: "bg-emerald-950/30",
   },
 };
+
+function normalizeEventType(type: string | number | undefined, typeName?: string): string {
+  if (typeName && typeof typeName === "string" && eventStyles[typeName.toUpperCase()]) {
+    return typeName.toUpperCase();
+  }
+  if (typeof type === "number") {
+    return EVENT_TYPE_MAP[type] || "UNKNOWN";
+  }
+  if (typeof type === "string") {
+    if (/^\d+$/.test(type)) {
+      const num = parseInt(type, 10);
+      return EVENT_TYPE_MAP[num] || type;
+    }
+    return type.toUpperCase();
+  }
+  return "UNKNOWN";
+}
 
 export function Timeline({ events }: { events: TimelineEvent[] }) {
   if (!events || events.length === 0) {
@@ -82,15 +109,31 @@ export function Timeline({ events }: { events: TimelineEvent[] }) {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  const formatDate = (dateVal: string | Date) => {
+  const formatDate = (dateVal: string | Date | number) => {
     try {
-      const d = new Date(dateVal);
+      if (!dateVal) return "—";
+      let d: Date;
+      if (dateVal instanceof Date) {
+        d = dateVal;
+      } else if (typeof dateVal === "number") {
+        // Unix timestamps from Solidity are in seconds (< 100 billion). Convert to milliseconds.
+        d = new Date(dateVal < 1e11 ? dateVal * 1000 : dateVal);
+      } else if (typeof dateVal === "string" && /^\d+$/.test(dateVal)) {
+        const num = Number(dateVal);
+        d = new Date(num < 1e11 ? num * 1000 : num);
+      } else {
+        d = new Date(dateVal);
+      }
+
+      if (isNaN(d.getTime())) return String(dateVal);
+
       return d.toLocaleString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
+        second: "2-digit",
       });
     } catch {
       return String(dateVal);
@@ -100,8 +143,9 @@ export function Timeline({ events }: { events: TimelineEvent[] }) {
   return (
     <div className="relative pl-6 border-l-2 border-slate-800 space-y-8 my-4">
       {events.map((evt, idx) => {
-        const style = eventStyles[evt.eventType] || {
-          title: evt.eventType,
+        const normType = normalizeEventType(evt.eventType, evt.eventTypeName);
+        const style = eventStyles[normType] || {
+          title: evt.eventTypeName || String(evt.eventType),
           icon: Clock,
           color: "text-slate-400",
           border: "border-slate-700",
@@ -122,6 +166,9 @@ export function Timeline({ events }: { events: TimelineEvent[] }) {
             <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4.5 hover:border-slate-700 transition">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
                 <h4 className="text-sm font-semibold text-white flex items-center space-x-2">
+                  <span className="font-mono text-xs text-emerald-400 font-bold bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                    Step #{idx + 1}
+                  </span>
                   <span>{style.title}</span>
                 </h4>
                 <div className="flex items-center space-x-1 text-xs text-slate-400 font-mono">
