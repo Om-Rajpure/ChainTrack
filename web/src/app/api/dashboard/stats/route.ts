@@ -75,6 +75,11 @@ export async function GET(request: NextRequest) {
     }
 
     return apiSuccess({
+      totalProducts: totalConfirmed,
+      byStatus: countsByStatus,
+      totalParticipants,
+      byRole: countsByRole,
+      pendingDrafts,
       stats: {
         products: {
           total: totalConfirmed,

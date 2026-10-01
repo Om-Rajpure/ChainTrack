@@ -37,7 +37,8 @@ export default function DashboardPage() {
       const statsRes = await fetch("/api/dashboard/stats");
       if (statsRes.ok) {
         const json = await statsRes.json();
-        setStats(json.data);
+        const payload = json.data || json;
+        setStats(payload);
       }
 
       // 2. Fetch recent products
@@ -86,11 +87,11 @@ export default function DashboardPage() {
   };
 
   const statCards = [
-    { label: "Total Products", value: stats?.totalProducts ?? 0, icon: Package, color: "text-blue-400", border: "border-blue-900/50" },
-    { label: "In Transit", value: stats?.byStatus?.IN_TRANSIT ?? 0, icon: Truck, color: "text-amber-400", border: "border-amber-900/50" },
-    { label: "At Distributor", value: stats?.byStatus?.AT_DISTRIBUTOR ?? 0, icon: Building2, color: "text-purple-400", border: "border-purple-900/50" },
-    { label: "At Retailer", value: stats?.byStatus?.AT_RETAILER ?? 0, icon: Store, color: "text-indigo-400", border: "border-indigo-900/50" },
-    { label: "Sold to Consumer", value: stats?.byStatus?.SOLD ?? 0, icon: BadgeDollarSign, color: "text-emerald-400", border: "border-emerald-900/50" },
+    { label: "Total Products", value: stats?.totalProducts ?? stats?.stats?.products?.total ?? 0, icon: Package, color: "text-blue-400", border: "border-blue-900/50" },
+    { label: "In Transit", value: stats?.byStatus?.IN_TRANSIT ?? stats?.stats?.products?.byStatus?.IN_TRANSIT ?? 0, icon: Truck, color: "text-amber-400", border: "border-amber-900/50" },
+    { label: "At Distributor", value: stats?.byStatus?.AT_DISTRIBUTOR ?? stats?.stats?.products?.byStatus?.AT_DISTRIBUTOR ?? 0, icon: Building2, color: "text-purple-400", border: "border-purple-900/50" },
+    { label: "At Retailer", value: stats?.byStatus?.AT_RETAILER ?? stats?.stats?.products?.byStatus?.AT_RETAILER ?? 0, icon: Store, color: "text-indigo-400", border: "border-indigo-900/50" },
+    { label: "Sold to Consumer", value: stats?.byStatus?.SOLD ?? stats?.stats?.products?.byStatus?.SOLD ?? 0, icon: BadgeDollarSign, color: "text-emerald-400", border: "border-emerald-900/50" },
   ];
 
   return (
