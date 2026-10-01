@@ -1,5 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 
+if (!process.env.DATABASE_URL && typeof process.loadEnvFile === "function") {
+  try {
+    process.loadEnvFile();
+  } catch {
+    // In Next.js runtime, environment variables are loaded automatically by the framework
+  }
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
