@@ -24,7 +24,10 @@ export class ApiError extends Error {
 }
 
 export function apiSuccess<T>(data: T, status = 200): NextResponse {
-  return NextResponse.json(data, { status });
+  if (typeof data === "object" && data !== null && !Array.isArray(data)) {
+    return NextResponse.json({ data, ...data }, { status });
+  }
+  return NextResponse.json({ data }, { status });
 }
 
 export function apiError(

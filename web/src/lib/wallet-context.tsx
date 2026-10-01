@@ -59,13 +59,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/me");
       if (res.ok) {
         const json = await res.json();
-        if (json?.data) {
+        const data = json?.data || json;
+        if (data && (data.address || data.role)) {
           setIsAuthenticated(true);
-          setRole(json.data.role || "NONE");
-          setIsActive(Boolean(json.data.active));
-          setProfile(json.data.profile || null);
-          if (json.data.address) {
-            setAccount(json.data.address.toLowerCase());
+          setRole(data.role || "NONE");
+          setIsActive(Boolean(data.active));
+          setProfile(data.profile || null);
+          if (data.address) {
+            setAccount(data.address.toLowerCase());
           }
         }
       } else {
@@ -204,7 +205,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Failed to obtain authentication nonce from server");
       }
       const nonceData = await nonceRes.json();
-      const nonce = nonceData.data.nonce;
+      const nonce = nonceData?.data?.nonce || nonceData?.nonce;
+      if (!nonce) {
+        throw new Error("Invalid nonce response received from server");
+      }
 
       // 2. Request user signature in MetaMask
       const message = `Sign in with Ethereum to ChainTrack Supply Chain Tracker\nNonce: ${nonce}`;
@@ -227,9 +231,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       }
 
       const verifyData = await verifyRes.json();
+      const payload = verifyData?.data || verifyData;
       setIsAuthenticated(true);
-      setRole(verifyData.data.role || "NONE");
-      setIsActive(Boolean(verifyData.data.active));
+      setRole(payload.role || "NONE");
+      setIsActive(Boolean(payload.active));
 
       await refreshSession();
       return true;
