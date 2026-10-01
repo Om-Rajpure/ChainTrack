@@ -69,7 +69,9 @@ export default function VerifyPage() {
     );
   }
 
-  if (error || !data || data.status === "NOT_FOUND") {
+  const currentStatus = data?.status || data?.result;
+
+  if (error || !data || currentStatus === "NOT_FOUND") {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12">
         <Link
@@ -100,8 +102,8 @@ export default function VerifyPage() {
     );
   }
 
-  const isAuthentic = data.status === "AUTHENTIC";
-  const isMismatch = data.status === "DATA_MISMATCH";
+  const isAuthentic = currentStatus === "AUTHENTIC";
+  const isMismatch = currentStatus === "DATA_MISMATCH";
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">

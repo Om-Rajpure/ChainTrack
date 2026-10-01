@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
-import fs from "fs";
-import path from "path";
+import defaultDeployment from "./contract/deployment.json";
+import defaultAbi from "./contract/SupplyChain.abi.json";
 
 // Role enum mapping
 export const CHAIN_ROLE_MAP: Record<number, "MANUFACTURER" | "DISTRIBUTOR" | "RETAILER"> = {
@@ -59,29 +59,29 @@ export interface DeploymentMetadata {
 }
 
 export function getDeploymentMetadata(): DeploymentMetadata | null {
-  try {
-    const deploymentPath = path.resolve(process.cwd(), "src/lib/contract/deployment.json");
-    if (fs.existsSync(deploymentPath)) {
-      const data = fs.readFileSync(deploymentPath, "utf8");
-      return JSON.parse(data) as DeploymentMetadata;
-    }
-  } catch (err) {
-    console.warn("Could not read deployment.json:", err);
-  }
-  return null;
+  const address =
+    process.env.CONTRACT_ADDRESS ||
+    process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
+    (defaultDeployment as any)?.address ||
+    (defaultDeployment as any)?.contractAddress;
+
+  const chainId = process.env.NEXT_PUBLIC_CHAIN_ID
+    ? parseInt(process.env.NEXT_PUBLIC_CHAIN_ID, 10)
+    : (defaultDeployment as any)?.chainId || 31337;
+
+  const deployBlock = (defaultDeployment as any)?.deployBlock || 0;
+
+  if (!address) return null;
+
+  return {
+    address,
+    chainId,
+    deployBlock,
+  };
 }
 
 export function getContractAbi(): ethers.InterfaceAbi | null {
-  try {
-    const abiPath = path.resolve(process.cwd(), "src/lib/contract/SupplyChain.abi.json");
-    if (fs.existsSync(abiPath)) {
-      const data = fs.readFileSync(abiPath, "utf8");
-      return JSON.parse(data);
-    }
-  } catch (err) {
-    console.warn("Could not read SupplyChain.abi.json:", err);
-  }
-  return null;
+  return (defaultAbi as unknown as ethers.InterfaceAbi) || null;
 }
 
 export function getProvider(): ethers.JsonRpcProvider {

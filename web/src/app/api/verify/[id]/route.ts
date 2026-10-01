@@ -47,6 +47,8 @@ export async function GET(
     if (!chainProduct) {
       return apiSuccess({
         result: "NOT_FOUND",
+        status: "NOT_FOUND",
+        productId,
         detailsAvailable: false,
         message: `Product #${productId} was not found on the smart contract`,
       });
@@ -72,8 +74,18 @@ export async function GET(
     if (!dbAvailable || !dbProduct) {
       return apiSuccess({
         result: "AUTHENTIC",
+        status: "AUTHENTIC",
+        productId,
         detailsAvailable: false,
         message: "Product exists on-chain with verified history, but descriptive off-chain details are not available in database.",
+        db: null,
+        product: null,
+        computedHash: null,
+        dataIntegrity: {
+          isAuthentic: true,
+          onChainHash: chainProduct.dataHash,
+          recomputedHash: null,
+        },
         chain: chainProduct,
         history: chainHistory,
       });
@@ -100,11 +112,30 @@ export async function GET(
 
     return apiSuccess({
       result,
+      status: result,
+      productId,
       detailsAvailable: true,
       dataIntegrity: {
         isAuthentic,
         onChainHash: chainProduct.dataHash,
         recomputedHash,
+      },
+      computedHash: recomputedHash,
+      db: {
+        id: dbProduct.id,
+        chainProductId: dbProduct.chainProductId,
+        serialNumber: dbProduct.serialNumber,
+        name: dbProduct.name,
+        category: dbProduct.category,
+        description: dbProduct.description,
+        batchNumber: dbProduct.batchNumber,
+        manufacturingDate: dbProduct.manufacturingDate,
+        manufacturerWallet: dbProduct.manufacturerAddress,
+        attributes: dbProduct.attributes,
+        imageUrl: dbProduct.imageUrl,
+        imageHash: dbProduct.imageHash,
+        registrationTxHash: dbProduct.registrationTxHash,
+        createdAt: dbProduct.createdAt,
       },
       product: {
         id: dbProduct.id,
