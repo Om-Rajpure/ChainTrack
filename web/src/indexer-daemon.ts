@@ -6,6 +6,23 @@ const POLL_INTERVAL_MS = parseInt(process.env.INDEXER_POLL_INTERVAL_MS || (isDev
 
 let isRunning = true;
 
+function sanitizeLogInput(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "null";
+  }
+  const str = String(value);
+  // Escape characters that could be interpreted as HTML or terminal control sequences
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t");
+}
+
 async function startIndexerDaemon() {
   const deployment = getDeploymentMetadata();
   const chainId = process.env.CHAIN_ID ? parseInt(process.env.CHAIN_ID, 10) : (deployment?.chainId ?? "Unknown");
@@ -15,10 +32,10 @@ async function startIndexerDaemon() {
   console.log("==================================================");
   console.log("ChainTrack — Standalone Event Indexer Daemon");
   console.log("==================================================");
-  console.log(`Network Chain ID : ${chainId}`);
-  console.log(`Contract Address : ${contractAddress ?? "Not found"}`);
-  console.log(`Deploy Block     : ${deployBlock}`);
-  console.log(`Polling Interval : ${POLL_INTERVAL_MS} ms`);
+  console.log(`Network Chain ID : ${sanitizeLogInput(chainId)}`);
+  console.log(`Contract Address : ${sanitizeLogInput(contractAddress ?? "Not found")}`);
+  console.log(`Deploy Block     : ${sanitizeLogInput(deployBlock)}`);
+  console.log(`Polling Interval : ${sanitizeLogInput(POLL_INTERVAL_MS)} ms`);
   console.log("==================================================");
 
   if (!contractAddress) {
@@ -40,10 +57,10 @@ async function startIndexerDaemon() {
     try {
       const result = await runIndexerSync();
       if (result.eventsProcessed > 0) {
-        console.log(`[${new Date().toISOString()}] Synced ${result.eventsProcessed} event(s) across blocks ${result.fromBlock}..${result.toBlock}`);
+        console.log(`[${new Date().toISOString()}] Synced ${sanitizeLogInput(result.eventsProcessed)} event(s) across blocks ${sanitizeLogInput(result.fromBlock)}..${sanitizeLogInput(result.toBlock)}`);
       }
     } catch (err: any) {
-      console.error(`[${new Date().toISOString()}] Indexer sync iteration error:`, err?.message || err);
+      console.error(`[${new Date().toISOString()}] Indexer sync iteration error:`, sanitizeLogInput(err?.message || err));
     }
 
     if (isRunning) {
@@ -56,6 +73,6 @@ async function startIndexerDaemon() {
 }
 
 startIndexerDaemon().catch((err) => {
-  console.error("Fatal indexer startup error:", err);
+  console.error("Fatal indexer startup error:", sanitizeLogInput(err));
   process.exit(1);
 });
